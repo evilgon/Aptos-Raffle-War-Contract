@@ -55,12 +55,21 @@ module GameDeployer::game{
     const GAME_NOT_ACTIVATED: u64 = 12;
 
     // Game not exist
-    const EWRONG_GAME: u64 = 13;
+    const EWRONG_GAME_ID: u64 = 13;
 
     // Lack of apt funds 
     const EINVALID_BALANCE: u64 = 14;
 
-    struct Game has store, drop{
+    /// Not registerd collection name to owner
+    const EWRONG_NOT_REGISTERED_COLLECTION: u64 = 15;
+
+    /// Already collection name exist
+    const EWRONG_ALREADY_REGISTERED_COLLECTION: u64 = 16;
+
+    /// Never entered game log
+    const EINVALID_GAME_LOG: u64 = 17;
+
+    struct Game has store, drop, copy{
         game_id: u64,
         game_type: u64,
         ticket_price: u64,
@@ -115,7 +124,7 @@ module GameDeployer::game{
     fun get_score(sender_addr: address, game_id: u64): u64 acquires GameLog {
         let game_log = borrow_global_mut<GameLog>(sender_addr);
         let (game_exist, game_id_index) = vector::index_of(&game_log.game_ids, &game_id);
-        assert!(game_exist, EWRONG_GAME);
+        assert!(game_exist, EWRONG_GAME_ID);
         *vector::borrow(&game_log.game_scores, game_id_index)
     }
 
@@ -232,7 +241,7 @@ module GameDeployer::game{
         );
     }
 
-    public fun set_active(game_id: u64) acquires GameConfig {
+    public entry fun set_active(game_id: u64) acquires GameConfig {
         let game_config = borrow_global_mut<GameConfig>(@GameDeployer);
         let (exist, index) = vector::index_of(&game_config.game_ids, &game_id);
         assert!(exist, error::permission_denied(EINVALID_game_ID));
@@ -242,8 +251,8 @@ module GameDeployer::game{
         if(game.players >= 3) {
             game.active = true;
         } else {
-            if(game.game_type == 0) { game.delay_time = game.delay_time + 3600; }
-            else { game.delay_time = game.delay_time + 25200; };
+            if(game.game_type == 0) { game.end_time = game.end_time + 3600; }
+            else { game.end_time = game.end_time + 25200; };
         };
     }
 
@@ -293,7 +302,7 @@ module GameDeployer::game{
         let (exist, index) = vector::index_of(&game_config.game_ids, &game_id);
         assert!(exist, error::permission_denied(EINVALID_game_ID));
         let game = vector::borrow_mut(&mut game_config.games, index);
-        assert!(game.active, error::permission_denied(GAME_NOT_ACTIVATED));
+        // assert!(game.active, error::permission_denied(GAME_NOT_ACTIVATED));
         let my_id = token::create_token_id_raw(my_token_creator, my_token_collection_name, my_token_token_name, my_token_property_version);
         let target_id = token::create_token_id_raw(target_token_creator, target_token_collection_name, target_token_token_name, target_token_property_version);
         let (my_token_id_exist, my_token_id_index) = vector::index_of(&game.player_token_ids, &my_id);
@@ -418,5 +427,20 @@ module GameDeployer::game{
         utils::assert_owner(sender);
         let game_config = borrow_global_mut<GameConfig>(signer::address_of(sender));
         game_config.attack_victory_probability = probability;
+    }
+
+    public entry fun append_collection_name(sender: &signer, collection_name: String)  acquires GameConfig {
+        utils::assert_owner(sender);
+        let game_config = borrow_global_mut<GameConfig>(signer::address_of(sender));
+        assert!(!vector::contains(&game_config.collection_names, &collection_name), EWRONG_ALREADY_REGISTERED_COLLECTION);
+        vector::push_back(&mut game_config.collection_names, collection_name);
+    }
+
+    public entry fun remove_collection_name(sender: &signer, collection_name: String) acquires GameConfig {
+        utils::assert_owner(sender);
+        let game_config = borrow_global_mut<GameConfig>(signer::address_of(sender));
+        let (exist, index) = vector::index_of(&game_config.collection_names, &collection_name);
+        assert!(exist, error::not_found(EWRONG_NOT_REGISTERED_COLLECTION));
+        vector::remove(&mut game_config.collection_names, index);
     }
 }

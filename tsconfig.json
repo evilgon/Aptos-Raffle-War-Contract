@@ -14,7 +14,7 @@
       "pretty": true
     },
     "include": [
-      "test/test.ts", 
+      "helper/", 
     ],
     "module": "commonjs" 
 }

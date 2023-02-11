@@ -8,7 +8,7 @@
         "aptos": "^1.5.0"
     },
     "scripts": {
-        "build": "aptos move publish",
+        "start": "npx ts-node ./helper/test.ts",
         "test": "jest --detectOpenHandles",
         "unit-test": "cd raffles_v2 && cargo test && cd ..",
         "compile": "aptos move compile --save-metadata --named-addresses GameDeployer=0x381c47f1a67a047aedbf9fde7f30156768e0d09e775a98200f8f56f5c229599a"
